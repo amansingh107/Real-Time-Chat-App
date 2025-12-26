@@ -6,7 +6,7 @@ WORKDIR /app
 
 # Copy the built JAR file into the container
 # Make sure this matches the version in your pom.xml
-COPY target/realtime-chat-system-0.0.1-SNAPSHOT.jar app.jar
+COPY /backend/target/realtime-chat-system-0.0.1-SNAPSHOT.jar app.jar
 
 # Expose the port the app runs on
 EXPOSE 8080
