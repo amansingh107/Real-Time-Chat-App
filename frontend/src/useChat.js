@@ -1,50 +1,90 @@
 import { useEffect, useRef, useState } from 'react';
 
-const SOCKET_URL = 'ws://localhost:80/chat'; // Connects to Nginx
+const SOCKET_URL = 'ws://localhost:80/chat';
 
-export const useChat = (roomId) => {
+export const useChat = (roomId, userId) => {
     const [messages, setMessages] = useState([]);
+    const [typingUsers, setTypingUsers] = useState(new Set()); 
     const socketRef = useRef(null);
 
     useEffect(() => {
-        // 1. Create WebSocket connection
+        // 1. Create Connection
         socketRef.current = new WebSocket(SOCKET_URL);
 
-        // 2. Connection Opened
+        // 2. Handle Open
         socketRef.current.onopen = () => {
-            console.log('Connected to Chat Server');
-            // Optional: Send a "JOIN" message here if your backend supported it
+            console.log("Connected to Chat");
+            const joinMsg = { type: 'JOIN', sender: userId, roomId, content: '' };
+            socketRef.current.send(JSON.stringify(joinMsg));
         };
 
-        // 3. Handle Incoming Messages
+        // 3. Handle Messages
         socketRef.current.onmessage = (event) => {
-            const incomingMessage = JSON.parse(event.data);
-            
-            // Only add message if it belongs to this room
-            if (incomingMessage.roomId === roomId) {
-                setMessages((prev) => [...prev, incomingMessage]);
+            try {
+                const msg = JSON.parse(event.data);
+                
+                // Filter by Room ID
+                if (String(msg.roomId) !== String(roomId)) return;
+
+                switch (msg.type) {
+                    case 'TYPING':
+                        handleTypingEvent(msg.sender);
+                        break;
+                    case 'CHAT':
+                    case 'JOIN':
+                    case 'LEAVE':
+                        setMessages((prev) => [...prev, msg]);
+                        break;
+                    default:
+                        break;
+                }
+            } catch (err) {
+                console.error("Error parsing message:", err);
             }
         };
 
-        // 4. Cleanup on Unmount
         return () => {
-            socketRef.current.close();
+            if (socketRef.current) socketRef.current.close();
         };
-    }, [roomId]); // Re-connect if roomId changes
+    }, [roomId, userId]); // <--- End of useEffect
 
-    // Function to send messages
-    const sendMessage = (content, sender) => {
+    // --- Helper Functions defined OUTSIDE useEffect ---
+
+    const handleTypingEvent = (sender) => {
+        if (sender === userId) return;
+        
+        setTypingUsers((prev) => {
+            const newSet = new Set(prev);
+            newSet.add(sender);
+            return newSet;
+        });
+
+        setTimeout(() => {
+            setTypingUsers((prev) => {
+                const newSet = new Set(prev);
+                newSet.delete(sender);
+                return newSet;
+            });
+        }, 2000);
+    };
+
+    const sendMessage = (content) => {
         if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
-            const payload = {
-                content,
-                sender,
-                roomId
-            };
-            socketRef.current.send(JSON.stringify(payload));
-        } else {
-            console.error('WebSocket is not open');
+            socketRef.current.send(JSON.stringify({
+                type: 'CHAT', content, sender: userId, roomId
+            }));
         }
     };
 
-    return { messages, sendMessage };
+    // Ensure this is defined HERE, before the return
+    const sendTyping = () => {
+        if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
+            socketRef.current.send(JSON.stringify({
+                type: 'TYPING', content: '', sender: userId, roomId
+            }));
+        }
+    };
+
+    // Return all functions and state
+    return { messages, sendMessage, sendTyping, typingUsers };
 };

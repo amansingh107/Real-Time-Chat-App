@@ -7,7 +7,7 @@ const USER_ID = `User_${Math.floor(Math.random() * 1000)}`;
 const ROOM_ID = "general"; // Default room
 
 function App() {
-  const { messages, sendMessage } = useChat(ROOM_ID);
+  const { messages, sendMessage, sendTyping, typingUsers } = useChat(ROOM_ID, USER_ID);
   const [newMessage, setNewMessage] = useState("");
 
   const handleSend = () => {
@@ -16,7 +16,10 @@ function App() {
       setNewMessage("");
     }
   };
-
+    const handleInputChange = (e) => {
+        setNewMessage(e.target.value);
+        sendTyping(); // <--- This line is what sends the signal!
+    };
   const handleKeyPress = (e) => {
     if (e.key === 'Enter') handleSend();
   };
@@ -42,13 +45,23 @@ function App() {
           );
         })}
       </div>
+      <div className="typing-indicator">
+        {typingUsers.size > 0 && (
+          <p>
+            {/* Convert Set to Array to join names with commas */}
+            {Array.from(typingUsers).join(", ")} {typingUsers.size > 1 ? "are" : "is"} typing...
+          </p>
+        )}
+      </div>
 
       <div className="input-area">
         <input
           type="text"
           placeholder="Type a message..."
           value={newMessage}
-          onChange={(e) => setNewMessage(e.target.value)}
+          // CORRECT: It must call the handler that does BOTH tasks
+          onChange={handleInputChange} 
+          
           onKeyDown={handleKeyPress}
         />
         <button onClick={handleSend}>Send</button>

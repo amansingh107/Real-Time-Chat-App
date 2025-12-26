@@ -3,4 +3,5 @@ com/chat/system/config/RedisConfig.class
 com/chat/system/config/WebSocketConfig.class
 com/chat/system/ChatappApplication.class
 com/chat/system/service/ChatService.class
+com/chat/system/model/ChatMessage$Type.class
 com/chat/system/model/ChatMessage.class

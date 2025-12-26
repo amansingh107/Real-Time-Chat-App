@@ -8,7 +8,12 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class ChatMessage {
-    private String content;
+    public enum Type {
+        CHAT, TYPING, JOIN, LEAVE
+    }
+
+    private Type type;       // CHAT | TYPING | JOIN | LEAVE
+    private String content;  // The text (or empty for typing)
     private String sender;
-    private String roomId; // Use this to separate chat channels
+    private String roomId;
 }

@@ -81,3 +81,21 @@
   border-radius: 4px;
   cursor: pointer;
 }
+
+.system-msg {
+    text-align: center;
+    font-size: 0.8rem;
+    color: #888;
+    margin: 10px 0;
+    font-style: italic;
+}
+
+/* App.css */
+.typing-indicator {
+    height: 20px;       /* Fixed height prevents the input from jumping up/down */
+    padding-left: 15px;
+    font-size: 0.8rem;
+    color: #888;
+    font-style: italic;
+    background-color: #f9f9f9; /* Match background so it blends in */
+}
