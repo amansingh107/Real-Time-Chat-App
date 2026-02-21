@@ -4,6 +4,7 @@ import com.chat.system.model.ChatMessage;
 import com.chat.system.service.ChatService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.socket.WebSocketHandler;
 import org.springframework.web.reactive.socket.WebSocketMessage;
@@ -17,6 +18,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 @Component
 @RequiredArgsConstructor
+@Slf4j
 public class ChatWebSocketHandler implements WebSocketHandler {
 
     private final ChatService chatService;
@@ -29,6 +31,7 @@ public class ChatWebSocketHandler implements WebSocketHandler {
     @Override
     public Mono<Void> handle(WebSocketSession session) {
         String sessionId = session.getId();
+        log.info("New WebSocket connection: {}", sessionId);
 
         // 1. Handle INCOMING messages
         Mono<Void> input = session.receive()
@@ -36,14 +39,22 @@ public class ChatWebSocketHandler implements WebSocketHandler {
             .flatMap(msg -> {
                 try {
                     ChatMessage chatMessage = objectMapper.readValue(msg, ChatMessage.class);
+                    log.info("Received message - Type: {}, Sender: {}, Room: {}", 
+                        chatMessage.getType(), chatMessage.getSender(), chatMessage.getRoomId());
                     
                     // Capture the UserID from the JOIN message to map it to the session
                     if (chatMessage.getType() == ChatMessage.Type.JOIN) {
                         sessionUserMap.put(sessionId, chatMessage.getSender());
+                        log.info("User {} joined with session {}", chatMessage.getSender(), sessionId);
+                    }
+                    
+                    if (chatMessage.getType() == ChatMessage.Type.TYPING) {
+                        log.info("Publishing TYPING event from: {}", chatMessage.getSender());
                     }
                     
                     return chatService.publishMessage(chatMessage);
                 } catch (Exception e) {
+                    log.error("Error processing message", e);
                     return Mono.error(e);
                 }
             })
@@ -52,6 +63,7 @@ public class ChatWebSocketHandler implements WebSocketHandler {
                 // If the connection closes, we find who it was and broadcast LEAVE
                 String userId = sessionUserMap.remove(sessionId);
                 if (userId != null) {
+                    log.info("User {} disconnected (session: {})", userId, sessionId);
                     ChatMessage leaveMessage = new ChatMessage(
                         ChatMessage.Type.LEAVE, "", userId, "general" // Assuming 'general' room for now
                     );
@@ -60,12 +72,16 @@ public class ChatWebSocketHandler implements WebSocketHandler {
             })
             .then();
 
-        // 2. Handle OUTGOING messages (unchanged)
+        // 2. Handle OUTGOING messages
         Flux<WebSocketMessage> output = chatService.subscribeToMessages()
             .map(chatMessage -> {
                 try {
-                    return objectMapper.writeValueAsString(chatMessage);
+                    String json = objectMapper.writeValueAsString(chatMessage);
+                    log.debug("Sending message to session {}: Type={}, Sender={}", 
+                        sessionId, chatMessage.getType(), chatMessage.getSender());
+                    return json;
                 } catch (Exception e) {
+                    log.error("Error serializing message", e);
                     throw new RuntimeException(e);
                 }
             })
