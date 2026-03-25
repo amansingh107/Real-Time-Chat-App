@@ -16,17 +16,8 @@ The core challenge in distributed chat systems is **State Management**. If User 
 3.  **Synchronization:** All server instances subscribe to Redis. When an event occurs (Message, Typing, Join), Redis broadcasts it to *all* servers, ensuring that a user connected to *any* instance receives the update.
 
 ### System Diagram
-```mermaid
-graph TD
-    ClientA[Client A] -->|WebSocket| Nginx
-    ClientB[Client B] -->|WebSocket| Nginx
-    
-    Nginx -->|Load Balance| App1[App Instance 1]
-    Nginx -->|Load Balance| App2[App Instance 2]
-    
-    App1 <-->|Pub/Sub| Redis[(Redis)]
-    App2 <-->|Pub/Sub| Redis
-```
+<img width="1408" height="768" alt="image" src="https://github.com/user-attachments/assets/63fdeb7f-244a-4af6-8658-c4edcecdf4bc" />
+
 
 ## ✨ Features
 
